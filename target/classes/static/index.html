@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Draw Delivery Zone</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC0bA_FMrXNSSKiAE20XYyaFNi1JA11YSc&libraries=drawing" async defer></script>
+    <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      height: 100vh;
+      width: calc(100% - 320px);
+      float: right;
+    }
+
+    #sidebar {
+      width: 300px;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f4f4f4;
+      border-right: 1px solid #ccc;
+      padding: 15px;
+      box-sizing: border-box;
+      float: left;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .zone-item {
+      margin-bottom: 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .form-section {
+      margin-top: 20px;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .form-section label {
+      display: block;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .form-section input {
+      width: 100%;
+      padding: 6px;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      font-size: 14px;
+      background-color: #1976D2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #125ea8;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Delivery Zones</h2>
+    <div id="zonesContainer"></div>
+
+    <div class="form-section">
+        <label for="zoneName">Zone Name:</label>
+        <input type="text" id="zoneName" required />
+
+        <label for="borough">Borough:</label>
+        <input type="text" id="borough" required />
+
+        <label for="minOrder">Minimum Order Amount:</label>
+        <input type="number" id="minOrder" step="0.01" required />
+
+        <label for="baseFee">Base Delivery Fee:</label>
+        <input type="number" id="baseFee" step="0.01" required />
+
+        <label for="perMileFee">Per Mile Fee:</label>
+        <input type="number" id="perMileFee" step="0.01" required />
+
+        <label for="estTime">Estimated Delivery Time (minutes):</label>
+        <input type="number" id="estTime" required />
+
+        <label for="surgeMultiplier">Surge Multiplier:</label>
+        <input type="number" id="surgeMultiplier" step="0.1" value="1.0" required />
+
+        <button onclick="submitZone()">Save Zone</button>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+  let map;
+  let drawingManager;
+  let currentPolygon = null;
+  let zoneCount = 0;
+  const allZones = [];
+
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 40.7128, lng: -74.0060 },
+      zoom: 13,
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      mapTypeControl: true
+    });
+
+    drawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: google.maps.drawing.OverlayType.POLYGON,
+      drawingControl: true,
+      drawingControlOptions: {
+        position: google.maps.ControlPosition.TOP_CENTER,
+        drawingModes: [google.maps.drawing.OverlayType.POLYGON]
+      },
+      polygonOptions: {
+        editable: true,
+        draggable: false,
+        fillColor: getRandomColor(),
+        fillOpacity: 0.35,
+        strokeColor: "#000",
+        strokeWeight: 2
+      }
+    });
+
+    drawingManager.setMap(map);
+
+    google.maps.event.addListener(drawingManager, 'overlaycomplete', function (event) {
+      if (event.type === google.maps.drawing.OverlayType.POLYGON) {
+        currentPolygon = event.overlay;
+        currentPolygon.setEditable(true);
+      }
+    });
+  }
+
+  function getRandomColor() {
+    const colors = ["#FF9800", "#4CAF50", "#03A9F4", "#E91E63", "#9C27B0", "#795548"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  function submitZone() {
+    if (!currentPolygon) {
+      alert("Please draw a polygon on the map first.");
+      return;
+    }
+
+    const zoneName = document.getElementById("zoneName").value.trim();
+    const borough = document.getElementById("borough").value.trim();
+    const minOrderAmount = parseFloat(document.getElementById("minOrder").value);
+    const baseDeliveryFee = parseFloat(document.getElementById("baseFee").value);
+    const perMileFee = parseFloat(document.getElementById("perMileFee").value);
+    const estTime = parseInt(document.getElementById("estTime").value);
+    const surgeMultiplier = parseFloat(document.getElementById("surgeMultiplier").value);
+
+    if (!zoneName || !borough || isNaN(minOrderAmount) || isNaN(baseDeliveryFee) ||
+        isNaN(perMileFee) || isNaN(estTime) || isNaN(surgeMultiplier)) {
+      alert("Please fill in all fields correctly.");
+      return;
+    }
+
+    const coordinates = currentPolygon.getPath().getArray().map((latlng, index) => ({
+      latitude: latlng.lat(),
+      longitude: latlng.lng(),
+      pointOrder: index
+    }));
+
+    const zoneData = {
+      storeId: 1,
+      zoneName,
+      borough,
+      minOrderAmount,
+      baseDeliveryFee,
+      perMileFee,
+      estimatedDeliveryTime: estTime,
+      surgeMultiplier,
+      coordinates
+    };
+
+    // Add to local zone list
+    addZoneToSidebar(zoneName, currentPolygon);
+
+    // Reset drawing manager
+    drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    currentPolygon = null;
+
+    // Send to backend
+    fetch("http://localhost:8080/api/delivery-zones/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(zoneData)
+    })
+    .then(response => {
+      if (response.ok) {
+        alert("Zone saved successfully.");
+        // Optionally clear form here
+      } else {
+        alert("Failed to save. Check server logs.");
+      }
+    })
+    .catch(error => {
+      console.error("Error:", error);
+      alert("An error occurred.");
+    });
+  }
+
+  function addZoneToSidebar(name, polygon) {
+    const zoneId = "zone_" + zoneCount++;
+    polygon.set("zoneId", zoneId);
+    allZones.push({ id: zoneId, polygon });
+
+    const container = document.getElementById("zonesContainer");
+    const div = document.createElement("div");
+    div.className = "zone-item";
+    div.innerHTML = `
+      <label>
+        <input type="checkbox" checked onchange="toggleZoneVisibility('${zoneId}')">
+        ${name}
+      </label>
+    `;
+    container.appendChild(div);
+  }
+
+  function toggleZoneVisibility(zoneId) {
+    const zone = allZones.find(z => z.id === zoneId);
+    if (zone) {
+      const visible = zone.polygon.getVisible();
+      zone.polygon.setVisible(!visible);
+    }
+  }
+
+  window.onload = initMap;
+</script>
+
+</body>
+</html>

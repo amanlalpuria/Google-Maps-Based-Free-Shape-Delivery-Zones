@@ -4,8 +4,10 @@ import com.free.map.dto.CoordinateDTO;
 import com.free.map.dto.DeliveryZoneRequest;
 import com.free.map.entity.DeliveryZone;
 import com.free.map.entity.DeliveryZoneCoordinate;
+import com.free.map.entity.Store;
 import com.free.map.repository.DeliveryZoneCoordinateRepository;
 import com.free.map.repository.DeliveryZoneRepository;
+import com.free.map.repository.StoreRepository;
 import com.free.map.service.DeliveryZoneService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,15 +23,24 @@ public class DeliveryZoneServiceImpl implements DeliveryZoneService {
     private DeliveryZoneRepository zoneRepository;
 
     @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
     private DeliveryZoneCoordinateRepository coordinateRepository;
 
 
     @Override
     @Transactional
     public DeliveryZone createZone(DeliveryZoneRequest request) {
+        Store store = new Store();
+        store.setStoreName(request.getStoreName());
+        store.setStoreAddress(request.getStoreAddress());
+        store.setStorePhone(request.getStorePhone());
+        Store storeSaved = storeRepository.save(store);
+
         DeliveryZone zone = new DeliveryZone();
         zone.setZoneName(request.getZoneName());
-        zone.setStoreId(request.getStoreId());
+        zone.setStoreId(storeSaved.getStoreId());
         zone.setBorough(request.getBorough());
         zone.setMinOrderAmount(request.getMinOrderAmount());
         zone.setBaseDeliveryFee(request.getBaseDeliveryFee());

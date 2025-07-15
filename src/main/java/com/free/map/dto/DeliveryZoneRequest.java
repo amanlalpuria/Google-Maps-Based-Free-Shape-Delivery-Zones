@@ -6,7 +6,9 @@ import java.util.List;
 
 @Data
 public class DeliveryZoneRequest {
-    private Long storeId;
+    private String storeName;
+    private String storeAddress;
+    private String storePhone;
     private String zoneName;
     private String borough;
     private BigDecimal minOrderAmount;

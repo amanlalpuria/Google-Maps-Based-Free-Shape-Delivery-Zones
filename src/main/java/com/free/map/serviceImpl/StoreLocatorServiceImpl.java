@@ -45,6 +45,8 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
 
             double distance = GeoUtils.calculateDistanceMiles(customerLat, customerLng, centroidLat, centroidLng);
 
+            System.out.println("customer distance :" + distance);
+
             if (distance < minDistance) {
                 nearestZone = zone;
                 minDistance = distance;

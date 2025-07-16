@@ -4,13 +4,12 @@ import com.free.map.dto.DeliveryInfoDTO;
 import com.free.map.entity.DeliveryZone;
 import com.free.map.entity.DeliveryZoneCoordinate;
 import com.free.map.repository.DeliveryZoneRepository;
-import com.free.map.utility.GeoUtils;
 import com.free.map.service.StoreLocatorService;
+import com.free.map.utility.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -30,7 +29,9 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
         for (DeliveryZone zone : allZones) {
             List<DeliveryZoneCoordinate> coordinates = zone.getCoordinates();
 
-            if (coordinates.isEmpty()) continue;
+            if (coordinates.isEmpty()){
+                continue;
+            }
 
             boolean isInside = isPointInsidePolygon(customerLat, customerLng, coordinates);
             BigDecimal centroidLat = coordinates.stream()
@@ -54,7 +55,9 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
             }
         }
 
-        if (nearestZone == null) return null;
+        if (nearestZone == null) {
+            return null;
+        }
 
         BigDecimal totalFee = nearestZone.getBaseDeliveryFee();
         if (!insidePolygon && nearestZone.getPerMileFee() != null) {
@@ -98,14 +101,20 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
             BigDecimal tempX = ax; ax = bx; bx = tempX;
         }
 
-        if (lat.compareTo(ay) < 0 || lat.compareTo(by) > 0) return false;
-        if (lng.compareTo(new BigDecimal(Math.max(ax.doubleValue(), bx.doubleValue()))) > 0) return false;
+        if (lat.compareTo(ay) < 0 || lat.compareTo(by) > 0){
+            return false;
+        }
+        if (lng.compareTo(new BigDecimal(Math.max(ax.doubleValue(), bx.doubleValue()))) > 0) {
+            return false;
+        }
 
         if (lat.compareTo(ay) == 0 || lat.compareTo(by) == 0) {
             lat = lat.add(new BigDecimal("0.00000001"));
         }
 
-        if (ax.compareTo(bx) == 0) return lng.compareTo(ax) <= 0;
+        if (ax.compareTo(bx) == 0) {
+            return lng.compareTo(ax) <= 0;
+        }
 
         double xIntersect = ax.doubleValue() +
                 (lat.doubleValue() - ay.doubleValue()) *

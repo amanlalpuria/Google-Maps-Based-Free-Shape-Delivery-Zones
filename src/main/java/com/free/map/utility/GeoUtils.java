@@ -7,7 +7,9 @@ public class GeoUtils {
     private static final double EARTH_RADIUS_MILES = 3958.8;
 
     public static double calculateDistanceMiles(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2) {
-        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0.0;
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
+            return 0.0;
+        }
 
         double lat1Rad = Math.toRadians(lat1.doubleValue());
         double lon1Rad = Math.toRadians(lon1.doubleValue());

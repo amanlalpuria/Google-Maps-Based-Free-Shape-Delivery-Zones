@@ -15,6 +15,7 @@ public class DeliveryZoneRequest {
     private BigDecimal baseDeliveryFee;
     private BigDecimal perMileFee;
     private BigDecimal surgeMultiplier;
+    private BigDecimal freeDeliveryRadius;
     private Integer estimatedDeliveryTime;
     private List<CoordinateDTO> coordinates;
 }

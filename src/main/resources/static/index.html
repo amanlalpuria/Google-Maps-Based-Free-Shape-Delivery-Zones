@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -111,6 +109,9 @@
         <label for="perMileFee">Per Mile Fee:</label>
         <input type="number" id="perMileFee" step="0.01" required />
 
+        <label for="freeDeliveryRadius">Free Delivery Radius (miles):</label>
+        <input type="number" id="freeDeliveryRadius" step="0.01" value="0.00" required />
+
         <label for="estTime">Estimated Delivery Time (minutes):</label>
         <input type="number" id="estTime" required />
 
@@ -175,23 +176,22 @@
       return;
     }
 
-    // Get Store Data
     const storeName = document.getElementById("storeName").value.trim();
     const storeAddress = document.getElementById("storeAddress").value.trim();
     const storePhone = document.getElementById("storePhone").value.trim();
 
-    // Get Zone Data
     const zoneName = document.getElementById("zoneName").value.trim();
     const borough = document.getElementById("borough").value.trim();
     const minOrderAmount = parseFloat(document.getElementById("minOrder").value);
     const baseDeliveryFee = parseFloat(document.getElementById("baseFee").value);
     const perMileFee = parseFloat(document.getElementById("perMileFee").value);
+    const freeDeliveryRadius = parseFloat(document.getElementById("freeDeliveryRadius").value);
     const estTime = parseInt(document.getElementById("estTime").value);
     const surgeMultiplier = parseFloat(document.getElementById("surgeMultiplier").value);
 
     if (!storeName || !storeAddress || !storePhone || !zoneName || !borough ||
         isNaN(minOrderAmount) || isNaN(baseDeliveryFee) || isNaN(perMileFee) ||
-        isNaN(estTime) || isNaN(surgeMultiplier)) {
+        isNaN(freeDeliveryRadius) || isNaN(estTime) || isNaN(surgeMultiplier)) {
       alert("Please fill in all fields correctly.");
       return;
     }
@@ -211,6 +211,7 @@
       minOrderAmount,
       baseDeliveryFee,
       perMileFee,
+      freeDeliveryRadius,
       estimatedDeliveryTime: estTime,
       surgeMultiplier,
       coordinates
@@ -270,4 +271,3 @@
 
 </body>
 </html>
-

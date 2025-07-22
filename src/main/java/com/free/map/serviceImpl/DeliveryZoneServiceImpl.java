@@ -45,6 +45,7 @@ public class DeliveryZoneServiceImpl implements DeliveryZoneService {
         zone.setMinOrderAmount(request.getMinOrderAmount());
         zone.setBaseDeliveryFee(request.getBaseDeliveryFee());
         zone.setPerMileFee(request.getPerMileFee());
+        zone.setFreeDeliveryRadius(request.getFreeDeliveryRadius());
         zone.setSurgeMultiplier(request.getSurgeMultiplier());
         zone.setEstimatedDeliveryTime(request.getEstimatedDeliveryTime());
         zone.setIsActive(true);

@@ -4,12 +4,15 @@ import com.free.map.dto.DeliveryInfoDTO;
 import com.free.map.entity.DeliveryZone;
 import com.free.map.entity.DeliveryZoneCoordinate;
 import com.free.map.repository.DeliveryZoneRepository;
+import com.free.map.repository.StoreRepository;
 import com.free.map.service.StoreLocatorService;
 import com.free.map.utility.GeoUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -17,6 +20,9 @@ import java.util.List;
 public class StoreLocatorServiceImpl implements StoreLocatorService {
 
     private final DeliveryZoneRepository deliveryZoneRepository;
+
+    @Autowired
+    private StoreRepository storeRepository;
 
     @Override
     public DeliveryInfoDTO getDeliveryInfo(BigDecimal customerLat, BigDecimal customerLng) {
@@ -29,24 +35,22 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
         for (DeliveryZone zone : allZones) {
             List<DeliveryZoneCoordinate> coordinates = zone.getCoordinates();
 
-            if (coordinates.isEmpty()){
-                continue;
-            }
+            if (coordinates.isEmpty()) continue;
 
             boolean isInside = isPointInsidePolygon(customerLat, customerLng, coordinates);
+
+            // Calculate centroid for distance measurement
             BigDecimal centroidLat = coordinates.stream()
                     .map(DeliveryZoneCoordinate::getLatitude)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(coordinates.size()), 8, BigDecimal.ROUND_HALF_UP);
+                    .divide(BigDecimal.valueOf(coordinates.size()), 8, RoundingMode.HALF_UP);
 
             BigDecimal centroidLng = coordinates.stream()
                     .map(DeliveryZoneCoordinate::getLongitude)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(coordinates.size()), 8, BigDecimal.ROUND_HALF_UP);
+                    .divide(BigDecimal.valueOf(coordinates.size()), 8, RoundingMode.HALF_UP);
 
             double distance = GeoUtils.calculateDistanceMiles(customerLat, customerLng, centroidLat, centroidLng);
-
-            System.out.println("customer distance :" + distance);
 
             if (distance < minDistance) {
                 nearestZone = zone;
@@ -61,12 +65,19 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
 
         BigDecimal totalFee = nearestZone.getBaseDeliveryFee();
         if (!insidePolygon && nearestZone.getPerMileFee() != null) {
-            totalFee = totalFee.add(nearestZone.getPerMileFee().multiply(BigDecimal.valueOf(minDistance)));
-        }
+            BigDecimal freeMiles = nearestZone.getFreeDeliveryRadius() != null ?
+                    nearestZone.getFreeDeliveryRadius() : BigDecimal.ZERO;
 
+            BigDecimal distanceMiles = BigDecimal.valueOf(minDistance).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal chargeableMiles = distanceMiles.subtract(freeMiles).max(BigDecimal.ZERO);
+
+            totalFee = totalFee.add(
+                    nearestZone.getPerMileFee().multiply(chargeableMiles).setScale(2, RoundingMode.HALF_UP)
+            );
+        }
         return DeliveryInfoDTO.builder()
                 .storeId(nearestZone.getStoreId())
-                .storeName("Store #" + nearestZone.getStoreId())
+                .storeName(storeRepository.findById(nearestZone.getStoreId()).get().getStoreName()) // Prefer actual name from DB
                 .zoneId(nearestZone.getId())
                 .zoneName(nearestZone.getZoneName())
                 .baseFee(nearestZone.getBaseDeliveryFee())
@@ -95,21 +106,27 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
         return (intersectCount % 2 == 1);
     }
 
-    private boolean rayIntersectsSegment(BigDecimal lat, BigDecimal lng, BigDecimal ay, BigDecimal ax, BigDecimal by, BigDecimal bx) {
+    private boolean rayIntersectsSegment(BigDecimal lat, BigDecimal lng,
+                                         BigDecimal ay, BigDecimal ax,
+                                         BigDecimal by, BigDecimal bx) {
+
         if (ay.compareTo(by) > 0) {
             BigDecimal tempY = ay; ay = by; by = tempY;
             BigDecimal tempX = ax; ax = bx; bx = tempX;
         }
 
-        if (lat.compareTo(ay) < 0 || lat.compareTo(by) > 0){
-            return false;
-        }
-        if (lng.compareTo(new BigDecimal(Math.max(ax.doubleValue(), bx.doubleValue()))) > 0) {
+        if (lat.compareTo(ay) < 0 || lat.compareTo(by) > 0) {
             return false;
         }
 
+        BigDecimal maxX = ax.max(bx);
+        if (lng.compareTo(maxX) > 0) {
+            return false;
+        }
+
+        BigDecimal adjustedLat = lat;
         if (lat.compareTo(ay) == 0 || lat.compareTo(by) == 0) {
-            lat = lat.add(new BigDecimal("0.00000001"));
+            adjustedLat = lat.add(new BigDecimal("0.00000001"));
         }
 
         if (ax.compareTo(bx) == 0) {
@@ -117,7 +134,7 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
         }
 
         double xIntersect = ax.doubleValue() +
-                (lat.doubleValue() - ay.doubleValue()) *
+                (adjustedLat.doubleValue() - ay.doubleValue()) *
                         (bx.doubleValue() - ax.doubleValue()) /
                         (by.doubleValue() - ay.doubleValue());
 

@@ -24,6 +24,9 @@ public class DeliveryZone {
     @Column(nullable = false)
     private Long storeId;
 
+    @Column(nullable = true)
+    private BigDecimal freeDeliveryRadius;
+
     @Column(nullable = false)
     private String zoneName;
 

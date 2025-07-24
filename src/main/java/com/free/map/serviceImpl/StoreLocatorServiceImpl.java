@@ -35,8 +35,9 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
         for (DeliveryZone zone : allZones) {
             List<DeliveryZoneCoordinate> coordinates = zone.getCoordinates();
 
-            if (coordinates.isEmpty()) continue;
-
+            if (coordinates.isEmpty()) {
+                continue;
+            }
             boolean isInside = isPointInsidePolygon(customerLat, customerLng, coordinates);
 
             // Calculate centroid for distance measurement
@@ -52,6 +53,7 @@ public class StoreLocatorServiceImpl implements StoreLocatorService {
 
             double distance = GeoUtils.calculateDistanceMiles(customerLat, customerLng, centroidLat, centroidLng);
 
+            System.out.println("distance............ : "+ distance);
             if (distance < minDistance) {
                 nearestZone = zone;
                 minDistance = distance;
